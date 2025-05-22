@@ -1,0 +1,86 @@
+Инструкция по использованию:
+Сохраните этот скрипт как webcam_timelapse.sh в той же папке, где находится ваш Python-скрипт
+
+Дайте права на выполнение:
+
+bash
+chmod +x webcam_timelapse.sh
+Основные команды:
+
+Запуск: ./webcam_timelapse.sh start
+
+Остановка: ./webcam_timelapse.sh stop
+
+Перезапуск: ./webcam_timelapse.sh restart
+
+Проверка статуса: ./webcam_timelapse.sh status
+
+Просмотр логов: ./webcam_timelapse.sh logs
+
+Создать видео из существующих снимков: ./webcam_timelapse.sh make-video
+
+Очистить снимки: ./webcam_timelapse.sh clean-frames
+
+Помощь: ./webcam_timelapse.sh help
+
+Особенности скрипта:
+Автоматическая настройка:
+
+Проверяет наличие ffmpeg и Python
+
+Создает виртуальное окружение при первом запуске
+
+Устанавливает необходимые Python-пакеты
+
+Управление процессом:
+
+Запуск в фоновом режиме с nohup
+
+Сохранение PID для управления процессом
+
+Логирование в файл
+
+Безопасное завершение:
+
+При остановке сначала отправляется SIGINT (Ctrl+C), чтобы Python-скрипт мог завершиться правильно
+
+Если процесс не отвечает, через 2 секунды отправляется SIGKILL
+
+Дополнительные функции:
+
+Создание видео из существующих снимков
+
+Очистка снимков (с подтверждением)
+
+Просмотр логов в реальном времени
+
+Для автоматического запуска при загрузке системы:
+Создайте службу systemd:
+
+bash
+sudo nano /etc/systemd/system/webcam_timelapse.service
+
+Добавьте содержимое:
+-----
+ini
+[Unit]
+Description=Webcam Timelapse Service
+After=network.target
+
+[Service]
+User=tim
+WorkingDirectory=/home/tim
+ExecStart=/home/tim/webcam_timelapse.sh start
+ExecStop=/home/tim/webcam_timelapse.sh stop
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target 
+---
+
+Включите и запустите службу:
+
+bash
+sudo systemctl daemon-reload
+sudo systemctl enable webcam_timelapse.service
+sudo systemctl start webcam_timelapse.service

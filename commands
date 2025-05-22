@@ -1,0 +1,14 @@
+Обычный режим (съемка + создание видео):
+
+bash
+python3 webcam_timelapse.py
+Режим только создания видео:
+
+bash
+python3 webcam_timelapse.py --make-video
+С bash-скриптом:
+
+bash
+./webcam_timelapse.sh start      # Запуск в фоне
+./webcam_timelapse.sh make-video # Только создание видео
+./webcam_timelapse.sh stop       # Остановка

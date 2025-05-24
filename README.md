@@ -136,3 +136,8 @@ Edit the Python scripts to adjust:
 
 ## License / Лицензия
 MIT License / Лицензия MIT
+
+
+https://github.com/user-attachments/assets/e0cc6ae3-d941-4096-b48e-34de9d9fe2d4
+
+

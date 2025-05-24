@@ -1,6 +1,6 @@
 # Webcam Timelapse Creator / Создатель Таймлапсов с Веб-Камеры
 
-## English Description
+## Description
 
 ### Overview
 This project provides a flexible solution for creating timelapse videos from a webcam with support for both landscape (16:9) and portrait (9:16) orientations. It consists of:

@@ -7,6 +7,7 @@ from datetime import datetime
 import glob
 import signal
 import sys
+import re
 
 # Настройки
 CAPTURE_INTERVAL = 20  # секунд между снимками
@@ -71,7 +72,7 @@ class WebcamTimelapse:
                 raise RuntimeError("Не удалось открыть веб-камеру (пробовали индексы 0-2)")
 
         # Устанавливаем разрешение (если камера поддерживает)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, PORTRAIT_HEIGHT)  # Обратите внимание на swap ширины и высоты
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, PORTRAIT_HEIGHT)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, PORTRAIT_WIDTH)
 
         start_time = time.time()
@@ -88,29 +89,28 @@ class WebcamTimelapse:
                 # Поворачиваем кадр на 90 градусов для портретного режима
                 frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
                 
-                # Обрезаем до нужного соотношения сторон (если необходимо)
+                # Обрезаем до нужного соотношения сторон
                 h, w = frame.shape[:2]
                 target_ratio = PORTRAIT_HEIGHT / PORTRAIT_WIDTH
                 current_ratio = h / w
                 
                 if current_ratio > target_ratio:
-                    # Обрезаем по высоте
                     new_h = int(w * target_ratio)
                     offset = (h - new_h) // 2
                     frame = frame[offset:offset+new_h, :]
                 elif current_ratio < target_ratio:
-                    # Обрезаем по ширине
                     new_w = int(h / target_ratio)
                     offset = (w - new_w) // 2
                     frame = frame[:, offset:offset+new_w]
                 
-                # Изменяем размер до точных размеров
                 frame = cv2.resize(frame, (PORTRAIT_WIDTH, PORTRAIT_HEIGHT))
 
+                # Форматируем номер кадра с ведущими нулями
+                frame_num = f"{self.frame_count:04d}"
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{FRAMES_DIR}/session_{session_id}_frame_{self.frame_count}_{timestamp}.jpg"
+                filename = f"{FRAMES_DIR}/session_{session_id}_frame_{frame_num}_{timestamp}.jpg"
 
-                # Пробуем сохранить несколько раз при ошибке
+                # Сохраняем изображение
                 for attempt in range(3):
                     try:
                         cv2.imwrite(filename, frame)
@@ -123,7 +123,7 @@ class WebcamTimelapse:
 
                 self.frame_count += 1
 
-                # Ждем до следующего снимка с проверкой флага выхода
+                # Ждем до следующего снимка
                 for _ in range(CAPTURE_INTERVAL * 10):
                     if self.should_exit:
                         break
@@ -134,17 +134,25 @@ class WebcamTimelapse:
 
         return self.frame_count
 
+    def natural_sort_key(self, filename):
+        """Функция для натуральной сортировки файлов по номеру кадра"""
+        match = re.search(r'session_\d+_frame_(\d+)_', filename)
+        if match:
+            return int(match.group(1))
+        return 0
+
     def create_video(self, session_id, frame_count):
-        """Создает видео из изображений в портретном режиме"""
-        image_files = []
-        for i in range(frame_count):
-            pattern = f"{FRAMES_DIR}/session_{session_id}_frame_{i}_*.jpg"
-            matching_files = sorted(glob.glob(pattern))
-            if matching_files:
-                image_files.append(matching_files[0])
+        """Создает видео из изображений в правильном порядке"""
+        # Получаем все файлы сессии и сортируем их по номеру кадра
+        pattern = f"{FRAMES_DIR}/session_{session_id}_frame_*.jpg"
+        image_files = sorted(glob.glob(pattern), key=self.natural_sort_key)
 
         if not image_files:
             raise RuntimeError(f"Не найдены изображения для сессии {session_id}")
+
+        # Ограничиваем количество файлов, если передано frame_count
+        if frame_count > 0:
+            image_files = image_files[:frame_count]
 
         list_file = os.path.join(FRAMES_DIR, f"ffmpeg_list_{session_id}.txt")
         with open(list_file, 'w') as f:

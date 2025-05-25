@@ -7,6 +7,7 @@ from datetime import datetime
 import glob
 import signal
 import sys
+import re
 
 # Настройки
 CAPTURE_INTERVAL = 20  # секунд между снимками
@@ -57,7 +58,7 @@ class WebcamTimelapse:
         os.makedirs(VIDEO_DIR, exist_ok=True)
 
     def capture_images(self, session_id):
-        """Захватывает изображения с веб-камеры"""
+        """Захватывает изображения с веб-камеры в альбомном режиме"""
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             # Пробуем альтернативные индексы камеры
@@ -79,8 +80,10 @@ class WebcamTimelapse:
                     time.sleep(1)
                     continue
 
+                # Форматируем номер кадра с ведущими нулями
+                frame_num = f"{self.frame_count:04d}"
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{FRAMES_DIR}/session_{session_id}_frame_{self.frame_count}_{timestamp}.jpg"
+                filename = f"{FRAMES_DIR}/session_{session_id}_frame_{frame_num}_{timestamp}.jpg"
 
                 # Пробуем сохранить несколько раз при ошибке
                 for attempt in range(3):
@@ -106,17 +109,25 @@ class WebcamTimelapse:
 
         return self.frame_count
 
+    def natural_sort_key(self, filename):
+        """Функция для натуральной сортировки файлов по номеру кадра"""
+        match = re.search(r'session_\d+_frame_(\d+)_', filename)
+        if match:
+            return int(match.group(1))
+        return 0
+
     def create_video(self, session_id, frame_count):
-        """Создает видео из изображений"""
-        image_files = []
-        for i in range(frame_count):
-            pattern = f"{FRAMES_DIR}/session_{session_id}_frame_{i}_*.jpg"
-            matching_files = sorted(glob.glob(pattern))
-            if matching_files:
-                image_files.append(matching_files[0])
+        """Создает видео из изображений в правильном порядке"""
+        # Получаем все файлы сессии и сортируем их по номеру кадра
+        pattern = f"{FRAMES_DIR}/session_{session_id}_frame_*.jpg"
+        image_files = sorted(glob.glob(pattern), key=self.natural_sort_key)
 
         if not image_files:
             raise RuntimeError(f"Не найдены изображения для сессии {session_id}")
+
+        # Ограничиваем количество файлов, если передано frame_count
+        if frame_count > 0:
+            image_files = image_files[:frame_count]
 
         list_file = os.path.join(FRAMES_DIR, f"ffmpeg_list_{session_id}.txt")
         with open(list_file, 'w') as f:
